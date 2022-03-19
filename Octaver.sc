@@ -1,4 +1,29 @@
 
+/* Server and Input-Output setup */
+(
+
+s.boot;
+
+
+
+//List devices
+
+ServerOptions.devices;
+
+Server.default.options.inDevice_("Analog (1+2) (RME Babyface)");
+
+Server.default.options.outDevice_("Altoparlanti (RME Babyface");
+
+
+//Server.default.options.hardwareBufferSize = 512;
+
+)
+
+
+
+/* Octaver */
+
+
 (
 
 var octaveUp1Bus = Bus.audio(s,1);
@@ -14,9 +39,9 @@ SynthDef(\octaverMain,{
 
 	arg inBus, outBus = 0,
 	octaveUp1Bus, octaveUp2Bus,
-	dryKnobLevel = 100,
+	dryKnobLevel = 0,
 	octaveUp1KnobLevel = 100,
-	octaveUp2KnobLevel = 100;
+	octaveUp2KnobLevel = 0;
 
 	var inputSignal;
 	var totalLevel, dryKnobNormalized,
@@ -77,11 +102,12 @@ SynthDef(\octaveUp2, {
 
 
 
-SynthDef(\justASin, {
+SynthDef(\readInputSignal, {
 
 	arg outBus = 0;
 
-	Out.ar(outBus, SinOsc.ar(200));
+	//Adjust argument to your input port
+	Out.ar(outBus, SoundIn.ar(1));
 
 }).add;
 
@@ -94,7 +120,7 @@ z = Synth(\octaverMain, [\inBus, inputBus, \octaveUp1Bus, octaveUp1Bus,
 ]);
 
 
-h = Synth(\justASin, [\outBus, inputBus]);
+h = Synth(\readInputSignal, [\outBus, inputBus]);
 
 
 
@@ -102,6 +128,7 @@ h = Synth(\justASin, [\outBus, inputBus]);
 
 
 )
+
 
 
 
