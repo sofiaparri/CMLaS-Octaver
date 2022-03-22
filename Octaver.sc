@@ -38,10 +38,10 @@ SynthDef(\octaverMain,{
 	arg inBus, outBus = 0,
 	octaveUp1Bus, octaveUp2Bus,
 	octaveDown1Bus, octaveDown2Bus,
-	dryKnobLevel = 100,
+	dryKnobLevel = 0,
 	octaveUp1KnobLevel = 100,
 	octaveUp2KnobLevel = 0,
-	octaveDown1KnobLevel = 100,
+	octaveDown1KnobLevel = 0,
 	octaveDown2KnobLevel = 0;
 
 	var inputSignal;
@@ -158,6 +158,7 @@ SynthDef("octaveDown1", { arg outBus=0, inBus;
 
 /* Phase vocoder pitch shifting approach */
 
+
 SynthDef(\phaseVocoderPitchShift,{
 	arg outBus, inBus, pitchShiftAmount = 2;
 
@@ -172,6 +173,82 @@ SynthDef(\phaseVocoderPitchShift,{
 
 
 }).add;
+
+
+SynthDef(\phaseVocoderAdvanced, {
+	arg inBus, outBus = 0;
+
+
+	var in, out, amp, fftSize=8192, winLen=2048, overlap=0.5 ,
+	chain, mexp, fScaled, df, binShift, phaseShift, inWinType=0, outWinType=0, f0,
+	hasFreq;
+
+	in = In.ar(inBus, 1);
+
+
+
+	# f0, hasFreq = Pitch.kr(in);
+
+
+	chain = FFT(LocalBuf(fftSize), in, overlap, inWinType, 1, winLen);
+
+	fScaled = f0 * 2;
+    df = fScaled - f0;
+    binShift = fftSize * (df / s.sampleRate);
+    chain = PV_BinShift(chain, stretch:1, shift:binShift, interp:1);
+    phaseShift = 2 * pi * binShift * overlap * (winLen/fftSize);
+    chain = PV_PhaseShift(chain, phaseShift, integrate:1);
+    out = IFFT(chain,outWinType,winLen);
+    Out.ar(outBus, out.dup);
+}).add;
+
+
+
+//Global variables
+p = 0; //frame number counter
+
+SynthDef(\phaseVocoderOCEAN, {
+
+
+	arg outBus, inBus, pitchShiftAmount = 2,
+	fftSize = 8192, winLen = 4096, overlap=0.25, inWinType = 0, outWinType = 0;
+
+	var in, chain, multiplier, newBin;
+
+	multiplier = (2*pi * p) / (overlap*fftSize);
+
+
+
+
+
+	in = In.ar(inBus, 1);
+
+
+	chain = FFT(LocalBuf(fftSize), in, overlap, inWinType, 1, winLen);
+
+	//Shift bins
+	chain = PV_BinShift(chain, pitchShiftAmount, 0.5);
+
+
+	//Adjust phase
+
+
+	chain = chain.pvcollect(1024,{ arg magnitude, phase, bin, index;
+		p = p + 1;
+
+		[magnitude, phase + (pitchShiftAmount*bin-bin+0.5)*multiplier]
+	});
+
+
+
+	chain = IFFT(chain);
+	//chain = LPF.ar(chain, 8000);
+	Out.ar(outBus, chain);
+
+
+
+}).add;
+
 
 
 
@@ -199,7 +276,7 @@ var octaveDown2Bus = Bus.audio(s, 1);
 
 var inputBus = Bus.audio(s, 1);
 
-x = Synth(\phaseVocoderPitchShift, [\inBus, octaveUp1Bus]);
+x = Synth(\phaseVocoderOCEAN, [\inBus, octaveUp1Bus]);
 y = Synth(\octaveDown1, [\inBus, octaveDown1Bus]);
 z = Synth(\octaverMain, [\inBus, inputBus, \octaveUp1Bus, octaveUp1Bus,
 	\octaveUp2Bus, octaveUp2Bus,
