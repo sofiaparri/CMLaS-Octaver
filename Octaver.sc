@@ -13,7 +13,7 @@ s.options.inDevice_("Analog (1+2) (RME Babyface)");
 s.options.outDevice_("Altoparlanti (RME Babyface");
 
 s.options.hardwareBufferSize_(512);
-s.options.sampleRate_(44100);
+s.options.sampleRate_(48000);
 
 
 s.boot;
@@ -156,6 +156,27 @@ SynthDef("octaveDown1", { arg outBus=0, inBus;
 
 
 
+/* Phase vocoder pitch shifting approach */
+
+SynthDef(\phaseVocoderPitchShift,{
+	arg outBus, inBus, pitchShiftAmount = 2;
+
+	var in, chain;
+
+	in = In.ar(inBus, 1);
+	chain = FFT(LocalBuf(4096), in);
+	chain = PV_MagShift(chain, pitchShiftAmount);
+	chain = IFFT(chain);
+	//chain = LPF.ar(chain, 8000);
+	Out.ar(outBus, IFFT(chain));
+
+
+}).add;
+
+
+
+
+
 SynthDef(\readInputSignal, {
 
 	arg outBus = 0;
@@ -178,7 +199,7 @@ var octaveDown2Bus = Bus.audio(s, 1);
 
 var inputBus = Bus.audio(s, 1);
 
-x = Synth(\octaveUp1, [\inBus, octaveUp1Bus]);
+x = Synth(\phaseVocoderPitchShift, [\inBus, octaveUp1Bus]);
 y = Synth(\octaveDown1, [\inBus, octaveDown1Bus]);
 z = Synth(\octaverMain, [\inBus, inputBus, \octaveUp1Bus, octaveUp1Bus,
 	\octaveUp2Bus, octaveUp2Bus,
